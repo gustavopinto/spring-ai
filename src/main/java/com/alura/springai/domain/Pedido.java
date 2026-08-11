@@ -51,6 +51,10 @@ public class Pedido {
     @Embedded
     private Entrega entrega;
 
+    /** Barra a ação repetida na Aula 4. */
+    @Builder.Default
+    private boolean reembolsado = false;
+
     public long diasDesdeACompra() {
         return ChronoUnit.DAYS.between(dataPedido.toLocalDate(), LocalDate.now());
     }

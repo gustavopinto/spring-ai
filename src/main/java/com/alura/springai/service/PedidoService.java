@@ -38,4 +38,11 @@ public class PedidoService {
     public Optional<Pedido> buscarEntidade(String codigo) {
         return pedidoRepository.findByCodigo(codigo);
     }
+
+    /** Chamado só pelo AtendimentoService, depois de política e confirmação. */
+    @Transactional
+    public void marcarComoReembolsado(Pedido pedido) {
+        pedido.setReembolsado(true);
+        pedidoRepository.save(pedido);
+    }
 }

@@ -112,8 +112,8 @@ public class PedidoConsultaTools {
 
         log.info("[TOOL] consultarOpcoesDisponiveis({})", codigo);
 
-        // TODO (Aula 3): carregar a entidade com pedidoService.buscarEntidade e
-        //                devolver politica.orientacaoParaOModelo(pedido).
-        throw new UnsupportedOperationException("TODO (Aula 3)");
+        return pedidoService.buscarEntidade(codigo)
+                .map(politica::orientacaoParaOModelo)
+                .orElse("Nenhum pedido encontrado com o código " + codigo + ".");
     }
 }

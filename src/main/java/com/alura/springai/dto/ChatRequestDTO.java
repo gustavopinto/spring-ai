@@ -8,6 +8,9 @@ public record ChatRequestDTO(
         String mensagem,
 
         @NotBlank
-        String emailCliente
+        String emailCliente,
+
+        /** Opcional na primeira mensagem — o controller gera um e devolve. */
+        String conversationId
 ) {
 }

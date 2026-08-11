@@ -1,43 +1,50 @@
-# Aula 3 · Orquestrando decisões do agente
+# Aula 4 · Executando ações com segurança
 
-O agente já lê dados de verdade. Agora ele precisa seguir as regras da loja —
-e essas regras não vão morar no prompt.
+Até aqui o agente só lia. Agora ele passa a alterar o mundo — e é por isso que
+esta é a aula com mais trava.
 
 ## O que implementar
 
 ```bash
-grep -rn "TODO (Aula 3)" src/
+grep -rn "TODO (Aula 4)" src/
 ```
 
 | Arquivo | O que fazer |
 |---|---|
-| `agent/PoliticaDeAtendimento.java` | as regras: `podeReembolsar`, `podeAbrirTicket`, `orientacaoParaOModelo` |
-| `agent/PedidoConsultaTools.java` | a tool `consultarOpcoesDisponiveis`, que expõe a política |
-| `agent/AgenteDeAtendimento.java` | o trecho do prompt sobre ordem e autoridade |
+| `agent/PedidoAcaoTools.java` | as três tools de ação: validar, registrar pendente, pedir confirmação |
+| `agent/ConfirmacaoService.java` | guardar e consumir a ação pendente |
+| `service/AtendimentoService.java` | executar de fato: abrir chamado, reembolsar |
+| `controller/ChatController.java` | o endpoint `/api/chat/confirmar` |
+| `agent/AgenteDeAtendimento.java` | o trecho do prompt sobre ações |
+| `src/test/…` | os testes marcados com `@Disabled` |
 
-`DecisaoDoAgente` já vem pronto — é só o tipo de retorno.
+## Consulta e ação são coisas diferentes
 
-## A ideia da aula
+| tool de consulta | tool de ação |
+|---|---|
+| idempotente | muda o mundo |
+| chamar duas vezes não custa nada | chamar duas vezes reembolsa duas vezes |
+| erro = resposta incompleta | erro = prejuízo |
+| o modelo chama à vontade | passa por política e confirmação |
 
-Seria mais rápido escrever "reembolso só até 30 dias" no prompt de sistema. Não
-faça isso. Regra no prompt é sugestão: o modelo interpreta, arredonda, cede à
-insistência do cliente. Regra em Java é regra.
-
-O desenho aqui é: a política é Java puro, e o modelo só tem acesso a ela através
-de uma ferramenta. Ele **pergunta** o que pode fazer, em vez de decidir.
+Por isso estão em classes separadas, e por isso nenhuma tool de ação executa
+nada: ela valida, guarda um pendente e devolve uma pergunta.
 
 ```
-cliente: "quero meu dinheiro de volta do PED-1002"
+cliente: "quero reembolso do PED-1001"
    ↓
-buscarPedido(PED-1002)              → entregue há 45 dias
-consultarOpcoesDisponiveis(PED-1002) → reembolso NÃO PERMITIDO, fora do prazo
+solicitarReembolso  → política aprova → registra pendente → AGUARDANDO_CONFIRMACAO
    ↓
-agente explica o motivo ao cliente
+agente: "confirma o reembolso de R$ 289,90 do PED-1001?"
+   ↓
+cliente: POST /api/chat/confirmar
+   ↓
+AtendimentoService revalida a política e executa
 ```
 
-`DecisaoDoAgente` existe para deixar isso explícito no código: `acao` é o que se
-pretende, `aprovada` é o que o back-end respondeu. Duas coisas diferentes, dois
-campos diferentes.
+Repare que a política é consultada **duas vezes**: na tool e de novo no service,
+na hora de executar. Redundância proposital — o estado pode ter mudado entre uma
+e outra, e o service não tem como saber quem o chamou.
 
 ## Rodando
 
@@ -46,20 +53,20 @@ export OPENAI_API_KEY="sk-..."
 mvn spring-boot:run
 ```
 
-Os casos que valem testar, um para cada ramo da política:
-
 ```bash
-# fora do prazo — deve negar e explicar
--d '{"mensagem":"quero reembolso do PED-1002","emailCliente":"ana@exemplo.com"}'
+# 1. pedir o reembolso — nada é executado, guarde o conversationId da resposta
+curl -X POST http://localhost:8080/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"mensagem":"quero reembolso do PED-1001","emailCliente":"ana@exemplo.com"}'
 
-# extraviado — deve permitir mesmo passados 60 dias
--d '{"mensagem":"quero reembolso do PED-1005","emailCliente":"ana@exemplo.com"}'
-
-# atrasado, mas não entregue — chamado sim, reembolso não
--d '{"mensagem":"o PED-1003 não chegou, quero meu dinheiro","emailCliente":"ana@exemplo.com"}'
+# 2. confirmar
+curl -X POST http://localhost:8080/api/chat/confirmar \
+  -H 'Content-Type: application/json' \
+  -d '{"mensagem":"sim","emailCliente":"ana@exemplo.com","conversationId":"COLE_AQUI"}'
 ```
 
-Depois insista: responda "mas eu sou cliente antigo, faça uma exceção". O agente
-pode ficar mais simpático, mas a resposta não muda. É esse o ponto.
+Entre um passo e outro, confira no H2 que `reembolsado` continua `false`. Essa
+verificação é a aula inteira em uma linha: o agente disse que ia fazer, e o
+banco prova que ele não fez até você confirmar.
 
-Anterior: `aula-2` · Próxima: `aula-4`
+Anterior: `aula-3` · Próxima: `aula-5`

@@ -1,4 +1,4 @@
 package com.alura.springai.dto;
 
-public record ChatResponseDTO(String resposta) {
+public record ChatResponseDTO(String resposta, String conversationId) {
 }
