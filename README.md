@@ -1,34 +1,46 @@
-# Spring AI: criando agentes com Java
+# Projeto base · API de pedidos
 
-Agente de atendimento para uma API de pedidos — consulta informações, toma
-decisões simples e executa ações controladas usando tools Java.
+Ponto de partida do curso: uma API REST comum, **sem nenhuma IA**. É a aplicação
+que o agente vai atender a partir da `aula-1`.
 
-**Esta branch está vazia de propósito. O código está nas branches de cada aula.**
+Está inteiramente implementada — nada a fazer aqui.
 
-| Branch | Aula |
-|---|---|
-| `base` | Projeto base — a API de pedidos, sem nenhuma IA |
-| `aula-1` | Criando o primeiro agente com Spring AI |
-| `aula-2` | Tool Calling com métodos Java |
-| `aula-3` | Orquestrando decisões do agente |
-| `aula-4` | Executando ações com segurança |
-| `aula-5` | Preparando o agente para produção |
-
-As branches são encadeadas: `base` → `aula-1` → `aula-2` → … → `aula-5`.
-Cada uma contém tudo o que veio antes, mais o conteúdo da sua aula.
+## Rodando
 
 ```bash
-git checkout aula-2                 # ir para o projeto da Aula 2
-git diff aula-1..aula-2             # ver exatamente o que a Aula 2 acrescenta
+mvn spring-boot:run
 ```
-
-Os métodos vêm com a assinatura, a documentação da lógica esperada e um `TODO` —
-o corpo é escrito durante a aula.
 
 ```bash
-grep -rn "TODO" src/                # o que implementar na branch atual
+curl http://localhost:8080/api/pedidos/PED-1001
+curl 'http://localhost:8080/api/pedidos?email=ana@exemplo.com'
 ```
 
-## Pré-requisitos
+Banco H2 em memória, console em http://localhost:8080/h2-console
+(JDBC URL `jdbc:h2:mem:pedidos`, usuário `sa`, sem senha).
 
-JDK 21, Maven 3.9+ e uma chave da OpenAI (`OPENAI_API_KEY`) a partir da `aula-1`.
+## Os dados de exemplo
+
+Seis pedidos, um para cada caminho que as Aulas 3 e 4 vão exercitar:
+
+| Código | Status | Situação |
+|---|---|---|
+| `PED-1001` | ENTREGUE | comprado há 5 dias — reembolso dentro do prazo |
+| `PED-1002` | ENTREGUE | comprado há 45 dias — reembolso fora do prazo |
+| `PED-1003` | ENVIADO | previsão vencida — entrega atrasada |
+| `PED-1004` | ENVIADO | dentro do prazo — caminho feliz |
+| `PED-1005` | EXTRAVIADO | reembolso permitido mesmo fora do prazo |
+| `PED-1006` | AGUARDANDO_PAGAMENTO | não há o que reembolsar |
+
+## Estrutura
+
+```
+domain/      Pedido, StatusPedido, Entrega
+repository/  PedidoRepository
+service/     PedidoService      ← a fronteira que o agente vai consumir
+dto/         PedidoDTO, EntregaDTO
+controller/  PedidoController   ← REST tradicional, para contraste na Aula 1
+config/      DataLoader
+```
+
+Próxima branch: `aula-1`.
