@@ -1,18 +1,43 @@
-# Aula 2 · Tool Calling com métodos Java
+# Aula 3 · Orquestrando decisões do agente
 
-O agente da Aula 1 inventava respostas sobre pedidos. Nesta aula ele passa a
-consultar a aplicação de verdade.
+O agente já lê dados de verdade. Agora ele precisa seguir as regras da loja —
+e essas regras não vão morar no prompt.
 
 ## O que implementar
 
 ```bash
-grep -rn "TODO (Aula 2)" src/
+grep -rn "TODO (Aula 3)" src/
 ```
 
 | Arquivo | O que fazer |
 |---|---|
-| `agent/PedidoConsultaTools.java` | os quatro métodos `@Tool` |
-| `agent/AgenteDeAtendimento.java` | registrar as tools no `ChatClient` (uma linha) |
+| `agent/PoliticaDeAtendimento.java` | as regras: `podeReembolsar`, `podeAbrirTicket`, `orientacaoParaOModelo` |
+| `agent/PedidoConsultaTools.java` | a tool `consultarOpcoesDisponiveis`, que expõe a política |
+| `agent/AgenteDeAtendimento.java` | o trecho do prompt sobre ordem e autoridade |
+
+`DecisaoDoAgente` já vem pronto — é só o tipo de retorno.
+
+## A ideia da aula
+
+Seria mais rápido escrever "reembolso só até 30 dias" no prompt de sistema. Não
+faça isso. Regra no prompt é sugestão: o modelo interpreta, arredonda, cede à
+insistência do cliente. Regra em Java é regra.
+
+O desenho aqui é: a política é Java puro, e o modelo só tem acesso a ela através
+de uma ferramenta. Ele **pergunta** o que pode fazer, em vez de decidir.
+
+```
+cliente: "quero meu dinheiro de volta do PED-1002"
+   ↓
+buscarPedido(PED-1002)              → entregue há 45 dias
+consultarOpcoesDisponiveis(PED-1002) → reembolso NÃO PERMITIDO, fora do prazo
+   ↓
+agente explica o motivo ao cliente
+```
+
+`DecisaoDoAgente` existe para deixar isso explícito no código: `acao` é o que se
+pretende, `aprovada` é o que o back-end respondeu. Duas coisas diferentes, dois
+campos diferentes.
 
 ## Rodando
 
@@ -21,26 +46,20 @@ export OPENAI_API_KEY="sk-..."
 mvn spring-boot:run
 ```
 
+Os casos que valem testar, um para cada ramo da política:
+
 ```bash
-curl -X POST http://localhost:8080/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"mensagem":"qual o status do PED-1003?","emailCliente":"ana@exemplo.com"}'
+# fora do prazo — deve negar e explicar
+-d '{"mensagem":"quero reembolso do PED-1002","emailCliente":"ana@exemplo.com"}'
+
+# extraviado — deve permitir mesmo passados 60 dias
+-d '{"mensagem":"quero reembolso do PED-1005","emailCliente":"ana@exemplo.com"}'
+
+# atrasado, mas não entregue — chamado sim, reembolso não
+-d '{"mensagem":"o PED-1003 não chegou, quero meu dinheiro","emailCliente":"ana@exemplo.com"}'
 ```
 
-A mesma pergunta da Aula 1 — agora com a resposta certa. Acompanhe o log: as
-linhas `[TOOL]` mostram o modelo pedindo para executar seus métodos.
+Depois insista: responda "mas eu sou cliente antigo, faça uma exceção". O agente
+pode ficar mais simpático, mas a resposta não muda. É esse o ponto.
 
-## Coisas para observar em aula
-
-**O modelo não executa nada.** Ele devolve "quero chamar `consultarStatus` com
-`PED-1003`". Quem executa é o Spring AI, na sua JVM, com suas credenciais.
-
-**A descrição da tool é o contrato.** Troque a descrição de `consultarStatus`
-por algo vago como "retorna informação" e repita a pergunta: o modelo passa a
-chamar a ferramenta errada, ou nenhuma. O texto da anotação é código.
-
-**Pergunte algo que exija duas ferramentas** — "o PED-1003 vai atrasar?" — e
-repare que o modelo encadeia as chamadas sozinho. É esse encadeamento que a
-Aula 3 vai colocar sob regras.
-
-Anterior: `aula-1` · Próxima: `aula-3`
+Anterior: `aula-2` · Próxima: `aula-4`

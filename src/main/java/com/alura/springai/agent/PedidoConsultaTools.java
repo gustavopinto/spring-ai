@@ -23,6 +23,7 @@ import java.util.List;
 public class PedidoConsultaTools {
 
     private final PedidoService pedidoService;
+    private final PoliticaDeAtendimento politica;
 
     @Tool(description = """
             Busca um pedido pelo código, no formato PED-0000, e retorna todos os
@@ -34,12 +35,9 @@ public class PedidoConsultaTools {
 
         log.info("[TOOL] buscarPedido({})", codigo);
 
-        // TODO (Aula 2): delegar para pedidoService.buscarPorCodigo(codigo).
-        //
-        // A decisão interessante é o que fazer quando o pedido não existe. Não
-        // lance exceção crua e não devolva null em silêncio: o retorno da tool
-        // vira texto que o modelo precisa conseguir explicar ao cliente.
-        throw new UnsupportedOperationException("TODO (Aula 2)");
+        return pedidoService.buscarPorCodigo(codigo)
+                .map(pedido -> (Object) pedido)
+                .orElse("Nenhum pedido encontrado com o código " + codigo + ".");
     }
 
     @Tool(description = """
@@ -51,9 +49,9 @@ public class PedidoConsultaTools {
 
         log.info("[TOOL] consultarStatus({})", codigo);
 
-        // TODO (Aula 2): uma linha legível, por exemplo
-        //   "PED-1003 · ENVIADO — Enviado, a caminho do endereço de entrega"
-        throw new UnsupportedOperationException("TODO (Aula 2)");
+        return pedidoService.buscarPorCodigo(codigo)
+                .map(p -> "%s · %s — %s".formatted(p.codigo(), p.status(), p.descricaoDoStatus()))
+                .orElse("Nenhum pedido encontrado com o código " + codigo + ".");
     }
 
     @Tool(description = """
@@ -66,12 +64,26 @@ public class PedidoConsultaTools {
 
         log.info("[TOOL] consultarPrazoDeEntrega({})", codigo);
 
-        // TODO (Aula 2): três situações diferentes, e o texto precisa
-        //                distinguir as três —
-        //   a) ainda não despachado  (entrega == null)
-        //   b) a caminho, no prazo
-        //   c) atrasado — informar quantos dias, insumo da Aula 3
-        throw new UnsupportedOperationException("TODO (Aula 2)");
+        var pedido = pedidoService.buscarPorCodigo(codigo).orElse(null);
+        if (pedido == null) {
+            return "Nenhum pedido encontrado com o código " + codigo + ".";
+        }
+        var entrega = pedido.entrega();
+        if (entrega == null) {
+            return "%s ainda não foi despachado, portanto não há previsão de entrega."
+                    .formatted(codigo);
+        }
+        if (entrega.dataEntrega() != null) {
+            return "%s foi entregue em %s.".formatted(codigo, entrega.dataEntrega());
+        }
+        if (entrega.atrasada()) {
+            return "%s está atrasado em %d dia(s). Previsão era %s, transportadora %s, rastreio %s."
+                    .formatted(codigo, entrega.diasDeAtraso(), entrega.previsaoEntrega(),
+                            entrega.transportadora(), entrega.codigoRastreio());
+        }
+        return "%s está a caminho, previsão de entrega em %s, transportadora %s, rastreio %s."
+                .formatted(codigo, entrega.previsaoEntrega(),
+                        entrega.transportadora(), entrega.codigoRastreio());
     }
 
     @Tool(description = """
@@ -83,11 +95,25 @@ public class PedidoConsultaTools {
 
         log.info("[TOOL] listarPedidosDoCliente({})", email);
 
-        // TODO (Aula 2): delegar para pedidoService.listarPorCliente(email).
-        //
-        // Guarde a inquietação para a Aula 5: este e-mail chega vindo do modelo,
-        // ou seja, do que o cliente digitou. Nada impede alguém de pedir "liste
-        // os pedidos de fulano@outro.com".
-        throw new UnsupportedOperationException("TODO (Aula 2)");
+        // Retomar na Aula 5: este e-mail chega vindo do modelo, ou seja, do que
+        // o cliente digitou.
+        return pedidoService.listarPorCliente(email);
+    }
+
+    @Tool(description = """
+            Informa quais ações estão disponíveis para um pedido — se ele pode ser
+            reembolsado, se cabe abrir um chamado de suporte — e o motivo de cada
+            resposta.
+            Consulte SEMPRE esta ferramenta antes de prometer qualquer providência
+            ao cliente. Ela é a fonte da verdade sobre o que a loja permite.
+            """)
+    public String consultarOpcoesDisponiveis(
+            @ToolParam(description = "Código do pedido, ex.: PED-1001") String codigo) {
+
+        log.info("[TOOL] consultarOpcoesDisponiveis({})", codigo);
+
+        // TODO (Aula 3): carregar a entidade com pedidoService.buscarEntidade e
+        //                devolver politica.orientacaoParaOModelo(pedido).
+        throw new UnsupportedOperationException("TODO (Aula 3)");
     }
 }

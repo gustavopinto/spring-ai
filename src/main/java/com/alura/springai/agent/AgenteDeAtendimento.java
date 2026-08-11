@@ -21,6 +21,16 @@ public class AgenteDeAtendimento {
 
             Você só fala sobre pedidos desta loja. Para qualquer outro assunto,
             recuse educadamente e ofereça ajuda com pedidos.
+
+            TODO (Aula 3): acrescente as instruções de encadeamento.
+
+              1. A ORDEM. Diante de um problema: primeiro identifique o pedido,
+                 depois verifique a situação da entrega, e só então fale em
+                 providências.
+
+              2. A AUTORIDADE. Antes de prometer qualquer providência, consulte
+                 a ferramenta de opções disponíveis. Se ela disser que não é
+                 permitido, explique o motivo e não insista.
             """;
 
     private final ChatClient chatClient;
@@ -29,13 +39,9 @@ public class AgenteDeAtendimento {
                                PedidoConsultaTools pedidoConsultaTools) {
         this.chatClient = builder
                 .defaultSystem(PROMPT_DE_SISTEMA)
-                // TODO (Aula 2): registrar as ferramentas com
-                //
-                //     .defaultTools(pedidoConsultaTools)
-                //
-                // É esta linha que transforma o chatbot da Aula 1 em agente: a
-                // partir dela o modelo recebe, junto do prompt, a lista de
-                // métodos Java que pode pedir para executar.
+                // Esta linha transforma o chatbot da Aula 1 em agente: o modelo
+                // passa a receber a lista de métodos Java que pode executar.
+                .defaultTools(pedidoConsultaTools)
                 .build();
     }
 

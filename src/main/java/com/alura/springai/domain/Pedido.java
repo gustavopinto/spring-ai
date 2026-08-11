@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "pedidos")
@@ -48,4 +50,8 @@ public class Pedido {
 
     @Embedded
     private Entrega entrega;
+
+    public long diasDesdeACompra() {
+        return ChronoUnit.DAYS.between(dataPedido.toLocalDate(), LocalDate.now());
+    }
 }

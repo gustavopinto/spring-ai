@@ -1,5 +1,6 @@
 package com.alura.springai.service;
 
+import com.alura.springai.domain.Pedido;
 import com.alura.springai.dto.PedidoDTO;
 import com.alura.springai.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,8 +11,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Este service não sabe que existe IA. A partir da Aula 2 o agente vira apenas
- * mais um cliente dele, igual ao PedidoController.
+ * Este service não sabe que existe IA. O agente é apenas mais um cliente dele,
+ * igual ao PedidoController.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,5 +31,11 @@ public class PedidoService {
                 .stream()
                 .map(PedidoDTO::de)
                 .toList();
+    }
+
+    /** A política precisa da entidade completa para decidir. */
+    @Transactional(readOnly = true)
+    public Optional<Pedido> buscarEntidade(String codigo) {
+        return pedidoRepository.findByCodigo(codigo);
     }
 }
