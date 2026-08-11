@@ -1,46 +1,49 @@
-# Projeto base · API de pedidos
+# Aula 1 · Criando o primeiro agente com Spring AI
 
-Ponto de partida do curso: uma API REST comum, **sem nenhuma IA**. É a aplicação
-que o agente vai atender a partir da `aula-1`.
+O que entra nesta aula: o Spring AI, o `ChatClient` e um endpoint conversacional
+com prompt de sistema definindo o papel do agente.
 
-Está inteiramente implementada — nada a fazer aqui.
+## O que implementar
+
+```bash
+grep -rn "TODO (Aula 1)" src/
+```
+
+| Arquivo | O que fazer |
+|---|---|
+| `agent/AgenteDeAtendimento.java` | escrever o `PROMPT_DE_SISTEMA` e o método `atender` |
+| `controller/ChatController.java` | ligar o endpoint ao agente |
+
+O resto do projeto (`base`) já está pronto e funcionando.
 
 ## Rodando
 
 ```bash
+export OPENAI_API_KEY="sk-..."
 mvn spring-boot:run
 ```
 
+A chave é obrigatória a partir desta aula — sem ela a aplicação não sobe.
+
 ```bash
-curl http://localhost:8080/api/pedidos/PED-1001
-curl 'http://localhost:8080/api/pedidos?email=ana@exemplo.com'
+curl -X POST http://localhost:8080/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"mensagem":"bom dia, como funciona a troca?","emailCliente":"ana@exemplo.com"}'
 ```
 
-Banco H2 em memória, console em http://localhost:8080/h2-console
-(JDBC URL `jdbc:h2:mem:pedidos`, usuário `sa`, sem senha).
+## O experimento que abre a Aula 2
 
-## Os dados de exemplo
+Depois de implementar, pergunte ao agente sobre um pedido de verdade:
 
-Seis pedidos, um para cada caminho que as Aulas 3 e 4 vão exercitar:
-
-| Código | Status | Situação |
-|---|---|---|
-| `PED-1001` | ENTREGUE | comprado há 5 dias — reembolso dentro do prazo |
-| `PED-1002` | ENTREGUE | comprado há 45 dias — reembolso fora do prazo |
-| `PED-1003` | ENVIADO | previsão vencida — entrega atrasada |
-| `PED-1004` | ENVIADO | dentro do prazo — caminho feliz |
-| `PED-1005` | EXTRAVIADO | reembolso permitido mesmo fora do prazo |
-| `PED-1006` | AGUARDANDO_PAGAMENTO | não há o que reembolsar |
-
-## Estrutura
-
-```
-domain/      Pedido, StatusPedido, Entrega
-repository/  PedidoRepository
-service/     PedidoService      ← a fronteira que o agente vai consumir
-dto/         PedidoDTO, EntregaDTO
-controller/  PedidoController   ← REST tradicional, para contraste na Aula 1
-config/      DataLoader
+```bash
+curl -X POST http://localhost:8080/api/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"mensagem":"qual o status do PED-1001?","emailCliente":"ana@exemplo.com"}'
 ```
 
-Próxima branch: `aula-1`.
+Ele vai responder com confiança — e inventar tudo. O pedido existe no banco
+(`curl http://localhost:8080/api/pedidos/PED-1001`), mas o agente não tem como
+enxergá-lo. Um modelo sozinho não é um agente; falta dar a ele acesso à
+aplicação. É exatamente esse buraco que o tool calling da Aula 2 preenche.
+
+Anterior: `base` · Próxima: `aula-2`

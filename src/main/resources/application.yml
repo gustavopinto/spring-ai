@@ -16,3 +16,13 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+
+  # Aula 1 · configuração do Spring AI
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-4o-mini
+          # Atendimento quer resposta previsível, não criativa.
+          temperature: 0.2
