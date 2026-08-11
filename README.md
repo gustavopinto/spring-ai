@@ -1,20 +1,18 @@
-# Aula 1 · Criando o primeiro agente com Spring AI
+# Aula 2 · Tool Calling com métodos Java
 
-O que entra nesta aula: o Spring AI, o `ChatClient` e um endpoint conversacional
-com prompt de sistema definindo o papel do agente.
+O agente da Aula 1 inventava respostas sobre pedidos. Nesta aula ele passa a
+consultar a aplicação de verdade.
 
 ## O que implementar
 
 ```bash
-grep -rn "TODO (Aula 1)" src/
+grep -rn "TODO (Aula 2)" src/
 ```
 
 | Arquivo | O que fazer |
 |---|---|
-| `agent/AgenteDeAtendimento.java` | escrever o `PROMPT_DE_SISTEMA` e o método `atender` |
-| `controller/ChatController.java` | ligar o endpoint ao agente |
-
-O resto do projeto (`base`) já está pronto e funcionando.
+| `agent/PedidoConsultaTools.java` | os quatro métodos `@Tool` |
+| `agent/AgenteDeAtendimento.java` | registrar as tools no `ChatClient` (uma linha) |
 
 ## Rodando
 
@@ -23,27 +21,26 @@ export OPENAI_API_KEY="sk-..."
 mvn spring-boot:run
 ```
 
-A chave é obrigatória a partir desta aula — sem ela a aplicação não sobe.
-
 ```bash
 curl -X POST http://localhost:8080/api/chat \
   -H 'Content-Type: application/json' \
-  -d '{"mensagem":"bom dia, como funciona a troca?","emailCliente":"ana@exemplo.com"}'
+  -d '{"mensagem":"qual o status do PED-1003?","emailCliente":"ana@exemplo.com"}'
 ```
 
-## O experimento que abre a Aula 2
+A mesma pergunta da Aula 1 — agora com a resposta certa. Acompanhe o log: as
+linhas `[TOOL]` mostram o modelo pedindo para executar seus métodos.
 
-Depois de implementar, pergunte ao agente sobre um pedido de verdade:
+## Coisas para observar em aula
 
-```bash
-curl -X POST http://localhost:8080/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"mensagem":"qual o status do PED-1001?","emailCliente":"ana@exemplo.com"}'
-```
+**O modelo não executa nada.** Ele devolve "quero chamar `consultarStatus` com
+`PED-1003`". Quem executa é o Spring AI, na sua JVM, com suas credenciais.
 
-Ele vai responder com confiança — e inventar tudo. O pedido existe no banco
-(`curl http://localhost:8080/api/pedidos/PED-1001`), mas o agente não tem como
-enxergá-lo. Um modelo sozinho não é um agente; falta dar a ele acesso à
-aplicação. É exatamente esse buraco que o tool calling da Aula 2 preenche.
+**A descrição da tool é o contrato.** Troque a descrição de `consultarStatus`
+por algo vago como "retorna informação" e repita a pergunta: o modelo passa a
+chamar a ferramenta errada, ou nenhuma. O texto da anotação é código.
 
-Anterior: `base` · Próxima: `aula-2`
+**Pergunte algo que exija duas ferramentas** — "o PED-1003 vai atrasar?" — e
+repare que o modelo encadeia as chamadas sozinho. É esse encadeamento que a
+Aula 3 vai colocar sob regras.
+
+Anterior: `aula-1` · Próxima: `aula-3`

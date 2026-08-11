@@ -20,7 +20,7 @@ public class ChatController {
 
     @PostMapping
     public ResponseEntity<ChatResponseDTO> conversar(@RequestBody @Valid ChatRequestDTO request) {
-        // TODO (Aula 1): chamar agente.atender(...) e devolver um ChatResponseDTO.
-        throw new UnsupportedOperationException("TODO (Aula 1)");
+        String resposta = agente.atender(request.mensagem(), request.emailCliente());
+        return ResponseEntity.ok(new ChatResponseDTO(resposta));
     }
 }

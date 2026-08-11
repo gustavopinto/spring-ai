@@ -9,32 +9,33 @@ import org.springframework.stereotype.Service;
 public class AgenteDeAtendimento {
 
     private static final String PROMPT_DE_SISTEMA = """
-            TODO (Aula 1): escreva o prompt de sistema.
+            Você é o agente de atendimento de uma loja online, responsável por
+            dúvidas sobre pedidos, entregas e reembolsos.
 
-            Um roteiro que funciona bem, um parágrafo para cada item:
+            Seja objetivo e cordial. Responda em português do Brasil, em poucas
+            frases, sem prometer o que não pode cumprir.
 
-              1. PAPEL   — "Você é o agente de atendimento da loja X, responsável
-                            por dúvidas sobre pedidos, entregas e reembolsos."
+            Nunca invente código de pedido, status, prazo ou valor. Se você não
+            tem a informação, diga com clareza e explique o que o cliente pode
+            fazer.
 
-              2. TOM     — objetivo e cordial, sem prometer o que não pode cumprir.
-
-              3. LIMITES — nunca invente código de pedido, status ou prazo de
-                           entrega. Se não souber, diga que não tem a informação.
-
-              4. ESCOPO  — só fala sobre pedidos desta loja; recusa educadamente
-                           qualquer outro assunto.
+            Você só fala sobre pedidos desta loja. Para qualquer outro assunto,
+            recuse educadamente e ofereça ajuda com pedidos.
             """;
 
     private final ChatClient chatClient;
 
-    /**
-     * O ChatClient.Builder é registrado pelo starter do OpenAI a partir do
-     * application.yml. O que vale para toda conversa entra aqui, com os
-     * métodos {@code default*}.
-     */
-    public AgenteDeAtendimento(ChatClient.Builder builder) {
+    public AgenteDeAtendimento(ChatClient.Builder builder,
+                               PedidoConsultaTools pedidoConsultaTools) {
         this.chatClient = builder
                 .defaultSystem(PROMPT_DE_SISTEMA)
+                // TODO (Aula 2): registrar as ferramentas com
+                //
+                //     .defaultTools(pedidoConsultaTools)
+                //
+                // É esta linha que transforma o chatbot da Aula 1 em agente: a
+                // partir dela o modelo recebe, junto do prompt, a lista de
+                // métodos Java que pode pedir para executar.
                 .build();
     }
 
@@ -44,12 +45,15 @@ public class AgenteDeAtendimento {
     public String atender(String mensagem, String emailCliente) {
         log.info("Mensagem recebida de {}", emailCliente);
 
-        // TODO (Aula 1): chamar o modelo e devolver o texto da resposta.
-        //
-        //   chatClient.prompt().user(...).call().content()
-        //
-        // Experimente passar só a mensagem, e depois passar também quem é o
-        // cliente. A resposta muda de qualidade.
-        throw new UnsupportedOperationException("TODO (Aula 1)");
+        String entrada = """
+                %s
+
+                (mensagem enviada pelo cliente autenticado %s)
+                """.formatted(mensagem, emailCliente);
+
+        return chatClient.prompt()
+                .user(entrada)
+                .call()
+                .content();
     }
 }
