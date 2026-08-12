@@ -1,11 +1,16 @@
 package com.alura.springai.agent;
 
+import com.alura.springai.agent.ConfirmacaoService.AcaoPendente;
+import com.alura.springai.agent.DecisaoDoAgente.TipoDeAcao;
+import com.alura.springai.domain.Pedido;
 import com.alura.springai.service.PedidoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
+
+import java.time.Instant;
 
 /**
  * Tools que alteram estado — separadas das de consulta de propósito. Consulta
@@ -53,13 +58,21 @@ public class PedidoAcaoTools {
 
         log.info("[TOOL-AÇÃO] abrirChamadoDeSuporte({})", codigo);
 
-        // TODO (Aula 4), nesta ordem:
-        //   1. carregar o pedido → não existe? ResultadoAcao.erro(...)
-        //   2. decisao = politica.podeAbrirTicket(pedido)
-        //   3. !decisao.aprovada() → ResultadoAcao.negada(decisao.justificativa())
-        //   4. confirmacaoService.registrarPendente(...)
-        //   5. ResultadoAcao.aguardandoConfirmacao("...confirma?")
-        throw new UnsupportedOperationException("TODO (Aula 4)");
+        Pedido pedido = pedidoService.buscarEntidade(codigo).orElse(null);
+        if (pedido == null) {
+            return ResultadoAcao.erro("Nenhum pedido encontrado com o código " + codigo + ".");
+        }
+
+        DecisaoDoAgente decisao = politica.podeAbrirTicket(pedido);
+        if (!decisao.aprovada()) {
+            return ResultadoAcao.negada(decisao.justificativa());
+        }
+
+        registrar(TipoDeAcao.ABRIR_TICKET, codigo, motivo);
+
+        return ResultadoAcao.aguardandoConfirmacao(
+                "Posso abrir um chamado de suporte para o pedido %s (%s)? Confirme para eu prosseguir."
+                        .formatted(codigo, motivo));
     }
 
     @Tool(description = """
@@ -74,15 +87,23 @@ public class PedidoAcaoTools {
 
         log.info("[TOOL-AÇÃO] solicitarReembolso({})", codigo);
 
-        // TODO (Aula 4): mesmo roteiro, com politica.podeReembolsar.
-        //
-        // Repare no "não tente novamente" da descrição: sem essa frase o modelo
-        // reinterpreta a negativa como falha temporária e chama a tool de novo.
-        // Prevenção de loop começa aqui.
-        //
-        // Inclua o valor na confirmação: "confirma o reembolso de R$ 289,90 do
-        // PED-1001?" é muito melhor que "confirma o reembolso?".
-        throw new UnsupportedOperationException("TODO (Aula 4)");
+        Pedido pedido = pedidoService.buscarEntidade(codigo).orElse(null);
+        if (pedido == null) {
+            return ResultadoAcao.erro("Nenhum pedido encontrado com o código " + codigo + ".");
+        }
+
+        // O "não tente novamente" da descrição da tool importa tanto quanto este
+        // retorno: sem ele o modelo reinterpreta a negativa como falha temporária.
+        DecisaoDoAgente decisao = politica.podeReembolsar(pedido);
+        if (!decisao.aprovada()) {
+            return ResultadoAcao.negada(decisao.justificativa());
+        }
+
+        registrar(TipoDeAcao.SOLICITAR_REEMBOLSO, codigo, decisao.justificativa());
+
+        return ResultadoAcao.aguardandoConfirmacao(
+                "Confirma o reembolso de R$ %s do pedido %s? Nada foi processado ainda."
+                        .formatted(pedido.getValorTotal(), codigo));
     }
 
     @Tool(description = """
@@ -96,10 +117,16 @@ public class PedidoAcaoTools {
 
         log.info("[TOOL-AÇÃO] escalarParaHumano({})", codigo);
 
-        // TODO (Aula 4): registrar um pendente do tipo ESCALAR_PARA_HUMANO.
-        //
-        // É a válvula de escape do agente. Sem ela, um agente encurralado
-        // inventa uma solução.
-        throw new UnsupportedOperationException("TODO (Aula 4)");
+        // A válvula de escape do agente. Sem ela, um agente encurralado inventa
+        // uma solução.
+        registrar(TipoDeAcao.ESCALAR_PARA_HUMANO, codigo, resumo);
+
+        return ResultadoAcao.aguardandoConfirmacao(
+                "Posso encaminhar seu caso para um atendente humano? Confirme para eu prosseguir.");
+    }
+
+    private void registrar(TipoDeAcao tipo, String codigo, String justificativa) {
+        confirmacaoService.registrarPendente(CONVERSA_ATUAL.get(), new AcaoPendente(
+                tipo, codigo, CLIENTE_ATUAL.get(), justificativa, Instant.now()));
     }
 }

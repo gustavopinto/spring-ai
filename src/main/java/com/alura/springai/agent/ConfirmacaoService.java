@@ -37,25 +37,32 @@ public class ConfirmacaoService {
         }
     }
 
-    /**
-     * @param conversationId chave do pendente — uma conversa, uma ação pendente
-     */
+    /** Substituir o pendente anterior é o correto: o "sim" vale para o pedido mais recente. */
     public void registrarPendente(String conversationId, AcaoPendente acao) {
-        // TODO (Aula 4): guardar no mapa.
-        //
-        // Substituir o pendente anterior é o comportamento correto: se o cliente
-        // pediu reembolso e depois mudou de ideia e pediu um chamado, o "sim"
-        // precisa valer para o pedido mais recente.
-        throw new UnsupportedOperationException("TODO (Aula 4)");
+        log.info("Ação pendente registrada: {} para {} (conversa {})",
+                acao.tipo(), acao.codigoPedido(), conversationId);
+        pendentes.put(conversationId, acao);
     }
 
-    /**
-     * Precisa REMOVER o pendente ao devolver — uma confirmação vale uma
-     * execução, senão um "sim" repetido reembolsa duas vezes. E precisa conferir
-     * o e-mail, senão a confirmação de um cliente executa a ação de outro.
-     */
+    /** Remove ao devolver: uma confirmação vale uma execução. */
     public Optional<AcaoPendente> consumirPendente(String conversationId, String emailCliente) {
-        // TODO (Aula 4): buscar, checar expiração, conferir o e-mail, remover.
-        throw new UnsupportedOperationException("TODO (Aula 4)");
+        AcaoPendente pendente = pendentes.get(conversationId);
+
+        if (pendente == null) {
+            return Optional.empty();
+        }
+        if (pendente.expirou()) {
+            pendentes.remove(conversationId);
+            return Optional.empty();
+        }
+        // Sem esta checagem, a confirmação de um cliente executa a ação de outro.
+        if (!pendente.emailCliente().equals(emailCliente)) {
+            log.warn("Confirmação recusada: {} tentou confirmar ação de {}",
+                    emailCliente, pendente.emailCliente());
+            return Optional.empty();
+        }
+
+        pendentes.remove(conversationId);
+        return Optional.of(pendente);
     }
 }

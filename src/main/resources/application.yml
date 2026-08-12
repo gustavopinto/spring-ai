@@ -26,3 +26,31 @@ spring:
           model: gpt-4o-mini
           # Atendimento quer resposta previsível, não criativa.
           temperature: 0.2
+
+    # Aula 5 · registra prompt e resposta nos traces.
+    # Em produção isso significa dado de cliente saindo para o Langfuse — vale
+    # a conversa sobre LGPD antes de ligar.
+    chat:
+      client:
+        observations:
+          log-prompt: true
+
+# Aula 5 · métricas e traces
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  tracing:
+    # Desligado por padrão: sem um endpoint OTLP válido, o exportador derruba a
+    # aplicação no startup. Ligue com TRACING_ENABLED=true ao usar o Langfuse.
+    enabled: ${TRACING_ENABLED:false}
+    sampling:
+      probability: 1.0     # 100% em aula; em produção, bem menos
+  otlp:
+    tracing:
+      # Langfuse cloud: https://cloud.langfuse.com/api/public/otel/v1/traces
+      endpoint: ${LANGFUSE_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+      headers:
+        # Basic base64(public_key:secret_key)
+        Authorization: ${LANGFUSE_AUTH:}

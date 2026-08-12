@@ -2,6 +2,7 @@ package com.alura.springai.agent;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,25 +38,30 @@ public class AgenteDeAtendimento {
             a sua avaliação do caso: se ela disser que não é permitido, explique
             o motivo ao cliente e não insista.
 
-            TODO (Aula 4): acrescente as instruções sobre ações.
+            Reembolso e abertura de chamado nunca acontecem de imediato. As
+            ferramentas de ação apenas preparam a operação e devolvem um pedido
+            de confirmação — repasse a pergunta ao cliente com o valor e o código
+            do pedido, deixando claro que nada foi feito ainda.
 
-              1. Reembolso e abertura de chamado NUNCA acontecem de imediato. As
-                 ferramentas de ação apenas preparam a operação e devolvem um
-                 pedido de confirmação — repasse a pergunta ao cliente com o
-                 valor e o código do pedido, e diga que nada foi feito ainda.
-
-              2. Quando uma ação for recusada, explique o motivo e ofereça a
-                 alternativa possível. Não tente a mesma ação novamente.
+            Quando uma ação for recusada, explique o motivo e ofereça a
+            alternativa possível. Não tente a mesma ação novamente.
             """;
 
     private final ChatClient chatClient;
 
     public AgenteDeAtendimento(ChatClient.Builder builder,
                                PedidoConsultaTools pedidoConsultaTools,
-                               PedidoAcaoTools pedidoAcaoTools) {
+                               PedidoAcaoTools pedidoAcaoTools,
+                               ChatMemory chatMemory) {
         this.chatClient = builder
                 .defaultSystem(PROMPT_DE_SISTEMA)
                 .defaultTools(pedidoConsultaTools, pedidoAcaoTools)
+                // TODO (Aula 5): ligar a memória de conversa com
+                //
+                //     .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                //
+                // Sem isto, "e o outro pedido?" não faz sentido para o agente:
+                // cada mensagem chega isolada.
                 .build();
     }
 
@@ -67,6 +73,14 @@ public class AgenteDeAtendimento {
     public String atender(String mensagem, String emailCliente, String conversationId) {
         log.info("Mensagem recebida de {} (conversa {})", emailCliente, conversationId);
 
+        // TODO (Aula 5): antes de chamar o modelo —
+        //   a) protecao.excedeuLimite(conversationId, ...) → recusar a mensagem
+        //   b) protecao.pareceInjection(mensagem)          → registrar em WARN
+        //   c) protecao.isolarEntradaDoCliente(mensagem)   → usar no lugar do texto cru
+        //
+        // E ao redor da chamada: medir a latência e registrar em MetricasDeIA,
+        // lendo os tokens de chatResponse.getMetadata().getUsage().
+
         PedidoAcaoTools.definirContexto(conversationId, emailCliente);
         try {
             String entrada = """
@@ -77,6 +91,9 @@ public class AgenteDeAtendimento {
 
             return chatClient.prompt()
                     .user(entrada)
+                    // TODO (Aula 5): dizer ao advisor de memória qual conversa é
+                    // esta, com .advisors(a -> a.param(ChatMemory.CONVERSATION_ID,
+                    // conversationId))
                     .call()
                     .content();
 
