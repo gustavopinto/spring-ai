@@ -1,20 +1,61 @@
-# Aula 1 · Criando o primeiro agente com Spring AI
+# Aula 3 · Orquestrando decisões do agente
 
-O que entra nesta aula: o Spring AI, o `ChatClient` e um endpoint conversacional
-com prompt de sistema definindo o papel do agente.
+O agente da Aula 2 já consulta pedidos de verdade. Agora ele precisa **combinar
+ferramentas** e **seguir as regras da loja**, e essas regras não vão morar no
+prompt.
 
-## O que implementar
+## O que entrou nesta aula
 
-```bash
-grep -rn "TODO (Aula 1)" src/
+| Arquivo | Papel |
+|---|---|
+| `agent/RegrasDeReembolso.java` | a regra de negócio, em Java puro |
+| `agent/Decisao.java` | a resposta do back-end: `aprovada` + `motivo` |
+| `agent/ReembolsoTools.java` | a tool `solicitarReembolso`, que valida antes de responder |
+| `agent/AgenteDeAtendimento.java` | prompt com **ORDEM** e **AUTORIDADE**; registra a nova tool |
+
+## As três ideias da aula
+
+**1. Encadeamento de tools.** Para resolver um pedido de reembolso, o modelo
+chama mais de uma ferramenta, uma depois da outra, usando o resultado de uma
+para decidir a próxima:
+
+```
+cliente: "quero meu dinheiro de volta da cafeteira"
+   ↓
+listarPedidos(ana@exemplo.com)   → descobre que a cafeteira é o PED-1002
+buscarPedido(PED-1002)           → entregue há 40 dias
+solicitarReembolso(PED-1002)     → NEGADO: fora do prazo de 7 dias
+   ↓
+agente explica o motivo ao cliente
 ```
 
-| Arquivo | O que fazer |
-|---|---|
-| `agent/AgenteDeAtendimento.java` | escrever o `PROMPT_DE_SISTEMA` e o método `atender` |
-| `controller/ChatController.java` | ligar o endpoint ao agente |
+Ninguém programou esse fluxo com `if`. Quem orquestra é o modelo, guiado pelo
+trecho **ORDEM** do prompt.
 
-O resto do projeto (`base`) já está pronto e funcionando.
+**2. Regras de negócio no back-end.** Seria mais rápido escrever "reembolso só
+até 7 dias" no prompt. Não faça isso: regra no prompt é sugestão. O modelo
+interpreta, arredonda, cede à insistência. Em `RegrasDeReembolso` a regra é um
+`switch` sobre o status do pedido, que dá para testar sem chamar o modelo.
+
+| Status | Decisão |
+|---|---|
+| `EXTRAVIADO` | aprova sempre |
+| `AGUARDANDO_PAGAMENTO`, `CANCELADO` | nega: não houve cobrança |
+| `PAGO`, `EM_SEPARACAO`, `ENVIADO` | nega: ainda não foi entregue |
+| `ENTREGUE` | aprova só se entregue há até 7 dias |
+
+**3. O modelo sugere, o back-end decide.** Quando o modelo chama
+`solicitarReembolso`, ele está *sugerindo* uma ação. A tool não confia nessa
+sugestão: busca o pedido no banco, aplica a regra e devolve uma `Decisao`. Os
+logs mostram as duas etapas separadas:
+
+```
+[MODELO SUGERIU] reembolso do pedido PED-1002
+[BACK-END DECIDIU] aprovada=false motivo=O pedido foi entregue há 40 dias, ...
+```
+
+Mesmo que o modelo ignore o prompt e peça o reembolso direto, a regra continua
+valendo.
 
 ## Rodando
 
@@ -23,27 +64,27 @@ export OPENAI_API_KEY="sk-..."
 mvn spring-boot:run
 ```
 
-A chave é obrigatória a partir desta aula — sem ela a aplicação não sobe.
+Um caso para cada ramo da regra:
 
 ```bash
-curl -X POST http://localhost:8080/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"mensagem":"bom dia, como funciona a troca?","emailCliente":"ana@exemplo.com"}'
+# dentro do prazo, deve aprovar
+curl -X POST http://localhost:8080/api/chat -H 'Content-Type: application/json' \
+  -d '{"mensagem":"quero reembolso do PED-1001","emailCliente":"ana@exemplo.com"}'
+
+# fora do prazo, deve negar e explicar (sem código, força o encadeamento)
+curl -X POST http://localhost:8080/api/chat -H 'Content-Type: application/json' \
+  -d '{"mensagem":"quero devolver a cafeteira","emailCliente":"ana@exemplo.com"}'
+
+# extraviado, deve aprovar mesmo passados 60 dias
+curl -X POST http://localhost:8080/api/chat -H 'Content-Type: application/json' \
+  -d '{"mensagem":"quero reembolso do PED-1005","emailCliente":"ana@exemplo.com"}'
+
+# ainda a caminho, deve negar
+curl -X POST http://localhost:8080/api/chat -H 'Content-Type: application/json' \
+  -d '{"mensagem":"o PED-1003 não chegou, quero meu dinheiro","emailCliente":"ana@exemplo.com"}'
 ```
 
-## O experimento que abre a Aula 2
+Depois insista: "mas eu sou cliente antigo, faça uma exceção para o PED-1002".
+O agente pode ficar mais simpático, mas a resposta não muda. É esse o ponto.
 
-Depois de implementar, pergunte ao agente sobre um pedido de verdade:
-
-```bash
-curl -X POST http://localhost:8080/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"mensagem":"qual o status do PED-1001?","emailCliente":"ana@exemplo.com"}'
-```
-
-Ele vai responder com confiança — e inventar tudo. O pedido existe no banco
-(`curl http://localhost:8080/api/pedidos/PED-1001`), mas o agente não tem como
-enxergá-lo. Um modelo sozinho não é um agente; falta dar a ele acesso à
-aplicação. É exatamente esse buraco que o tool calling da Aula 2 preenche.
-
-Anterior: `base` · Próxima: `aula-2`
+Anterior: `aula-2` · Próxima: `aula-4`
