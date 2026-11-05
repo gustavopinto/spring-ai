@@ -40,25 +40,14 @@
     </dependencyManagement>
 
     <dependencies>
-
-        <!--
-          Aula 1 · o Spring AI entra aqui.
-          Atenção ao nome: em 1.0.0 o artefato passou a se chamar
-          spring-ai-starter-model-openai. O antigo
-          spring-ai-openai-spring-boot-starter não existe mais.
-        -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
-
-        <!-- Aula 1 · @Valid no corpo da requisição de chat -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-
-        <!-- Projeto base: uma API REST comum. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

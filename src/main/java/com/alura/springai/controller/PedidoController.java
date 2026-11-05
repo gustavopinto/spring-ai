@@ -6,8 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/pedidos")
 @RequiredArgsConstructor
@@ -20,10 +18,5 @@ public class PedidoController {
         return pedidoService.buscarPorCodigo(codigo)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @GetMapping
-    public ResponseEntity<List<PedidoDTO>> listarPorCliente(@RequestParam String email) {
-        return ResponseEntity.ok(pedidoService.listarPorCliente(email));
     }
 }
